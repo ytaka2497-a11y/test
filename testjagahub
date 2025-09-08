@@ -1,0 +1,120 @@
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Window = Rayfield:CreateWindow({
+   Name = "じゃがHub",
+   LoadingTitle = "Jaga Hub",
+   LoadingSubtitle = "by じゃが",
+   ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "JagaHubConfig" }
+})
+
+local Main = Window:CreateTab("Main", 4483362458)
+
+-- キャラ・入力サービス・RunService
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+local uis = game:GetService("UserInputService")
+local runService = game:GetService("RunService")
+local vehicle = nil
+
+-- Vehicle検知
+humanoid.Seated:Connect(function(active, seat)
+    if active and seat:IsA("VehicleSeat") then
+        vehicle = seat.Parent
+    else
+        vehicle = nil
+    end
+end)
+
+-- VehicleFly
+local flying = false
+local speed = 0.6
+Main:CreateToggle({
+    Name = "VehicleFly",
+    CurrentValue = false,
+    Callback = function(Value)
+        flying = Value
+        if not flying then
+            if vehicle and vehicle.PrimaryPart then
+                vehicle.PrimaryPart.Velocity = Vector3.new(0,0,0)
+            else
+                hrp.Velocity = Vector3.new(0,0,0)
+            end
+        end
+    end,
+})
+Main:CreateInput({
+    Name = "スピード設定",
+    CurrentValue = "0.6",
+    PlaceholderText = "数値を入力",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then speed = num end
+    end,
+})
+runService.RenderStepped:Connect(function()
+    if flying then
+        local cam = workspace.CurrentCamera
+        local moveDir = Vector3.new()
+        if uis:IsKeyDown(Enum.KeyCode.W) then moveDir += cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.S) then moveDir -= cam.CFrame.LookVector end
+        if uis:IsKeyDown(Enum.KeyCode.A) then moveDir -= cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.D) then moveDir += cam.CFrame.RightVector end
+        if uis:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0,1,0) end
+        if uis:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir += Vector3.new(0,-1,0) end
+        if moveDir.Magnitude > 0 then
+            if vehicle and vehicle.PrimaryPart then
+                vehicle.PrimaryPart.Velocity = moveDir.Unit * speed
+            else
+                hrp.Velocity = moveDir.Unit * speed
+            end
+        end
+    end
+end)
+
+-- WalkSpeed
+Main:CreateSlider({
+    Name = "歩行スピード",
+    Range = {16, 200},
+    Increment = 1,
+    CurrentValue = humanoid.WalkSpeed,
+    Callback = function(Value) humanoid.WalkSpeed = Value end
+})
+
+-- JumpPower
+Main:CreateSlider({
+    Name = "ジャンプ力",
+    Range = {50, 500},
+    Increment = 5,
+    CurrentValue = humanoid.JumpPower,
+    Callback = function(Value) humanoid.JumpPower = Value end
+})
+
+-- Noclip
+local noclip = false
+Main:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Callback = function(Value) noclip = Value end
+})
+runService.Stepped:Connect(function()
+    if noclip then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- ESP
+local espEnabled = false
+local espObjects = {}
+Main:CreateToggle({
+    Name = "ESP",
+    CurrentValue = false,
+    Callback = function(Value)
+        espEnabled = Value
+        for _, box in pairs(espObjects) do box:Destroy() end
+        esp
